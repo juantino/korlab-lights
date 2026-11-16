@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KorLab Lights — Escenas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#07080c;             /* más profundo */
+    --surface:#101420;        /* tarjetas */
+    --surface-2:#161b2c;      /* inputs, modales */
+    --border:#232a40;
+    --txt:#f2f4fa; --muted:#9aa3b8;
+    --accent:#ffb340;         /* ámbar KorLab */
+    --accent-soft:rgba(255,179,64,.14);
+    --danger:#ff5d5d; --ok:#4ade80;
+    --accent2:#ffc056;        /* alias legacy (hover/bordes) */
+    --radius:16px; --radius-sm:10px;
+    --shadow:0 8px 32px rgba(0,0,0,.45);
+    /* alias legacy para no romper CSS existente */
+    --panel:var(--surface); --panel2:var(--surface-2); --line:var(--border);
+  }
+  *{box-sizing:border-box; margin:0; padding:0; font-family:'Outfit',-apple-system,'Segoe UI',Roboto,sans-serif}
+  body{background:var(--bg); color:var(--txt); min-height:100vh; padding:24px}
+  .wrap{max-width:780px; margin:0 auto}
+
+  .userbar{display:flex; align-items:center; gap:12px; padding-bottom:16px; border-bottom:1px solid var(--line); position:relative}
+  .userbar label{color:var(--muted); font-size:14px}
+
+  /* --- Header de app --- */
+  .apphead{display:flex; align-items:center; justify-content:space-between; margin-bottom:18px}
+  .apptitle{font-size:18px; font-weight:700; letter-spacing:-0.02em}
+  .hub{display:flex; align-items:center; gap:7px; font-size:12px; color:var(--muted); font-weight:600}
+  .hub .dot{width:9px; height:9px; border-radius:50%; background:#5b6474; transition:background .3s}
+  .hub.on .dot{background:var(--ok); box-shadow:0 0 8px rgba(74,222,128,.7)}
+  .hub.on{color:var(--txt)}
+
+  /* --- Chip de avatar de usuario --- */
+  .userchip{display:inline-flex; align-items:center; gap:10px; background:var(--surface-2);
+    border:1px solid var(--border); border-radius:999px; padding:5px 14px 5px 5px; cursor:pointer;
+    transition:border-color .2s; user-select:none}
+  .userchip:hover{border-color:var(--accent)}
+  .userchip .avatar{width:32px; height:32px; border-radius:50%;
+    background:linear-gradient(135deg,var(--accent2),var(--accent)); color:#0b0c10;
+    font-weight:700; font-size:14px; display:flex; align-items:center; justify-content:center}
+  .userchip .uname{font-size:14px; font-weight:600; color:var(--txt)}
+  .userchip .chev{color:var(--muted); transition:transform .2s}
+  .userchip.open .chev{transform:rotate(180deg)}
+  .userbar select{display:none}
+  .userpop{position:absolute; top:calc(100% + 6px); left:0; min-width:230px; background:var(--surface-2);
+    border:1px solid var(--border); border-radius:var(--radius-sm); box-shadow:var(--shadow);
+    padding:6px; display:none; z-index:30}
+  .userpop.open{display:block; animation:popIn .16s ease}
+  @keyframes popIn{from{opacity:0; transform:translateY(-4px)}to{opacity:1}}
+  .userpop-item{display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:8px;
+    cursor:pointer; font-size:14px; color:var(--txt)}
+  .userpop-item:hover{background:var(--accent-soft)}
+  .userpop-item.active{background:var(--accent-soft)}
+  .userpop-item .miniavatar{width:24px; height:24px; border-radius:50%; background:var(--accent);
+    color:#0b0c10; font-weight:700; font-size:11px; display:flex; align-items:center; justify-content:center}
+  .userpop-new{display:flex; align-items:center; gap:8px; width:100%; padding:9px 10px; border:none;
+    background:transparent; color:var(--accent); font-size:14px; font-weight:600; cursor:pointer;
+    border-top:1px solid var(--border); margin-top:4px; border-radius:0 0 8px 8px}
+  .userpop-new:hover{background:var(--accent-soft)}
+  select{appearance:none; background:var(--panel2); color:var(--txt);
+    border:1px solid var(--accent); border-radius:10px; padding:10px 38px 10px 14px;
+    font-size:15px; cursor:pointer;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23f2b03d' stroke-width='2' fill='none'/%3E%3C/svg%3E");
+    background-repeat:no-repeat; background-position:right 14px center}
+  select option{background:var(--panel2)}
+
+  .btn-primary{margin:20px 0 24px; width:100%; padding:14px; font-size:16px; font-weight:600;
+    color:#0d0f14; background:var(--accent); border:none; border-radius:12px; cursor:pointer; transition:filter .15s}
+  .btn-primary:hover{filter:brightness(1.1)}
+
+  .sechead{display:flex; align-items:center; justify-content:space-between; margin-bottom:14px}
+  h2{font-size:17px; font-weight:700; color:var(--txt); letter-spacing:-0.02em}
+  .modeswitch{display:flex; background:var(--surface-2); border:1px solid var(--border); border-radius:999px; padding:3px}
+  .modeswitch button{border:none; background:transparent; color:var(--muted); padding:7px 16px;
+    border-radius:999px; font-size:13px; cursor:pointer; transition:all .2s}
+  .modeswitch button.active{background:var(--accent); color:#0b0c10; font-weight:600}
+  .grid canvas{animation:cvFadeIn .25s ease}
+  @keyframes cvFadeIn{from{opacity:0}to{opacity:1}}
+
+  .grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:16px}
+  .card{position:relative; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+    overflow:hidden; cursor:pointer; transition:transform .18s, box-shadow .18s, border-color .18s}
+  .card:hover{transform:scale(1.02); border-color:var(--accent)}
+  .card:hover .applyBtn{opacity:1; pointer-events:auto}
+  .card canvas{width:100%; height:150px; display:block}
+  .card::after{content:''; position:absolute; left:0; right:0; top:0; height:150px;
+    background:linear-gradient(180deg, transparent 55%, rgba(0,0,0,.55)); pointer-events:none}
+  .card .name{position:absolute; left:12px; bottom:40px; font-size:14px; font-weight:600;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; right:12px; z-index:2}
+  .card .meta{position:absolute; top:10px; right:10px; font-size:11px; color:var(--txt);
+    background:rgba(0,0,0,.35); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
+    padding:3px 8px; border-radius:999px; z-index:2}
+  .applyBtn{position:absolute; left:12px; bottom:8px; z-index:3; padding:5px 12px; font-size:12px;
+    background:rgba(0,0,0,.4); color:var(--txt); border:1px solid var(--border); border-radius:999px;
+    cursor:pointer; opacity:0; pointer-events:none; transition:opacity .18s; backdrop-filter:blur(8px)}
+  .applyBtn:hover{border-color:var(--accent); color:var(--accent)}
+  .empty{color:var(--muted); font-size:14px; padding:32px; text-align:center; border-radius:var(--radius);
+    display:flex; flex-direction:column; align-items:center; gap:12px}
+
+  .overlay{position:fixed; inset:0; background:rgba(0,0,0,.7); display:none; align-items:center;
+    justify-content:center; z-index:10; opacity:0; transition:opacity .25s}
+  .overlay.open{display:flex; opacity:1}
+  .modal{background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+    padding:24px; width:min(520px,94vw); max-height:92vh; overflow-y:auto; transform:scale(.96);
+    transition:transform .2s ease}
+  .overlay.open .modal{transform:scale(1)}
+  .modal h3{margin-bottom:14px; font-size:18px; font-weight:700; letter-spacing:-0.02em}
+  .modal input[type=text]{width:100%; padding:12px; background:var(--surface-2); color:var(--txt);
+    border:1px solid var(--border); border-radius:10px; font-size:15px; margin-bottom:14px}
+  .row{display:flex; gap:10px; justify-content:flex-end; margin-top:14px}
+  .btn-ghost,.btn-save{padding:10px 18px; border-radius:10px; font-size:14px; cursor:pointer; border:none}
+  .btn-ghost{background:transparent; color:var(--muted)}
+  .btn-save{background:linear-gradient(180deg,#ffc056,#f2a430); color:#0b0c10; font-weight:600;
+    box-shadow:0 6px 20px rgba(242,164,48,.35); transition:transform .1s, filter .15s}
+  .btn-save:hover{filter:brightness(1.06)}
+  .btn-save:active{transform:scale(.98)}
+  .btn-save.cargando{pointer-events:none; opacity:.85}
+  .spinner{display:inline-block; width:14px; height:14px; border:2px solid rgba(11,12,16,.25);
+    border-top-color:#0b0c10; border-radius:50%; animation:spin .7s linear infinite;
+    vertical-align:-2px; margin-right:6px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* Toast de confirmación (Propuesta 6) */
+  .toast{position:fixed; left:50%; bottom:28px; transform:translateX(-50%) translateY(16px);
+    background:var(--surface-2); border:1px solid var(--ok); color:var(--txt); font-size:14px;
+    font-weight:600; padding:10px 18px; border-radius:999px; box-shadow:var(--shadow);
+    opacity:0; pointer-events:none; transition:opacity .25s, transform .25s; z-index:50}
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0)}
+
+  @media (prefers-reduced-motion: reduce){
+    *{transition:none !important; animation:none !important}
+  }
+
+  .editor{display:grid; grid-template-columns:1fr 1fr; gap:12px 18px; margin-bottom:14px}
+  .field{display:flex; flex-direction:column; gap:5px}
+  .field span{font-size:12px; color:var(--muted)}
+  .field .val{font-size:12px; color:var(--accent); font-weight:600}
+  .huerow{grid-column:1/-1}
+  #hueBar{width:100%; height:46px; border-radius:10px; border:1px solid var(--line); cursor:ew-resize; display:block; touch-action:none}
+  .huelabels{display:flex; justify-content:space-between; font-size:12px; color:var(--muted); margin-top:4px}
+  .huelabels b{color:var(--txt)}
+  .chip{display:inline-block; width:14px; height:14px; border-radius:4px; vertical-align:-2px; margin-right:5px}
+  input[type=color]{width:100%; height:42px; border:1px solid var(--line); border-radius:10px; background:var(--panel2); cursor:pointer; padding:4px}
+  input[type=range]{width:100%; accent-color:var(--accent)}
+  input[type=number]{width:100%; padding:8px; background:var(--panel2); color:var(--txt); border:1px solid var(--line); border-radius:8px; font-size:14px}
+
+  /* --- Editor agrupado (Propuesta 5) --- */
+  .editor{display:flex; flex-direction:column; gap:16px}
+  .group{display:flex; flex-direction:column; gap:12px}
+  .grouphead{font-size:13px; font-weight:700; color:var(--txt); letter-spacing:-0.01em;
+    padding-bottom:8px; border-bottom:1px solid var(--border)}
+  .field{display:flex; flex-direction:column; gap:8px}
+  .field>span{display:flex; justify-content:space-between; align-items:center; font-size:13px; color:var(--muted)}
+  .field .val{background:var(--accent-soft); color:var(--accent); padding:2px 8px;
+    border-radius:999px; font-size:12px; font-weight:600}
+  input[type=range]{appearance:none; -webkit-appearance:none; height:4px; border-radius:2px;
+    background:var(--border); outline:none; margin:9px 0}
+  input[type=range]::-webkit-slider-thumb{appearance:none; -webkit-appearance:none; width:22px; height:22px;
+    border-radius:50%; background:#fff; box-shadow:0 2px 8px rgba(0,0,0,.5); cursor:grab; border:none}
+  input[type=range]:active::-webkit-slider-thumb{cursor:grabbing}
+  input[type=range]::-moz-range-thumb{width:22px; height:22px; border-radius:50%; background:#fff;
+    box-shadow:0 2px 8px rgba(0,0,0,.5); cursor:grab; border:none}
+  .motionrow{display:flex; gap:12px}
+  .stepper{flex:1; display:flex; align-items:center; gap:8px; background:var(--surface-2);
+    border:1px solid var(--border); border-radius:999px; padding:4px 6px}
+  .stepper .steplabel{font-size:12px; color:var(--muted); flex:1; padding-left:8px}
+  .stepper button{width:26px; height:26px; border-radius:50%; border:none; background:var(--accent-soft);
+    color:var(--accent); font-size:15px; font-weight:700; cursor:pointer; line-height:1; transition:transform .1s}
+  .stepper button:active{transform:scale(.9)}
+  .stepper input{width:44px; background:transparent; border:none; color:var(--txt); font-size:14px;
+    font-weight:600; text-align:center; -moz-appearance:textfield; appearance:textfield}
+  .stepper input::-webkit-outer-spin-button,.stepper input::-webkit-inner-spin-button{-webkit-appearance:none; margin:0}
+  .stepper input:focus{outline:none}
+
+  .previews{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:8px}
+  .previews .pv{background:#0a0b0e; border:1px solid var(--border); border-radius:12px; overflow:hidden;
+    box-shadow:var(--shadow)}
+  .previews canvas{width:100%; height:130px; display:block}
+  .pvlabel{font-size:12px; color:var(--muted); text-align:center; padding:6px}
+
+  pre.json{background:#0a0b0e; border:1px solid var(--line); border-radius:10px; padding:12px;
+    font-size:11px; font-family:ui-monospace,Menlo,monospace; color:#9fe8a8; overflow-x:auto; white-space:pre}
+  .hint{font-size:12px; color:var(--muted); margin-top:10px; line-height:1.5}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="apphead">
+    <div class="apptitle">KorLab Lights</div>
+    <div class="hub" id="hubIndicador"><span class="dot"></span><span id="hubTxt">Sin hub</span></div>
+  </div>
+
+  <div class="userbar">
+    <div class="userchip" id="userChip" onclick="toggleUserPop(event)">
+      <span class="avatar" id="userChipAvatar">U</span>
+      <span class="uname" id="userChipNombre">Usuario</span>
+      <span class="chev">▾</span>
+    </div>
+    <div class="userpop" id="userPop"></div>
+    <label hidden style="display:none">Usuario:</label>
+    <select id="userSelect" onchange="if(this.value==='__new__'){openNewUser();}else{renderEscenas();}"></select>
+  </div>
+
+  <button class="btn-primary" onclick="openEditor()">Crear nueva escena</button>
+
+  <div class="sechead">
+    <h2>Escenas guardadas</h2>
+    <div class="modeswitch">
+      <button id="modeGlow" class="active" onclick="setMode('glow')">Cuarto</button>
+      <button id="modeHsv" onclick="setMode('hsv')">Cilindro HSV</button>
+    </div>
+  </div>
+  <div class="grid" id="grid"></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<!-- Modal: nuevo usuario -->
+<div class="overlay" id="ovUser">
+  <div class="modal">
+    <h3>Nuevo usuario</h3>
+    <input type="text" id="newUserName" placeholder="Nombre del usuario" maxlength="24">
+    <div class="row">
+      <button class="btn-ghost" onclick="closeOv('ovUser')">Cancelar</button>
+      <button class="btn-save" onclick="addUser()">Agregar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: editor de escena (módulo de luces) -->
+<div class="overlay" id="ovEditor">
+  <div class="modal">
+    <h3 id="editorTitulo">Módulo de luces — nueva escena</h3>
+    <input type="text" id="sceneName" placeholder="Nombre de la escena (ej. Box — Clase fuerte)">
+    <div class="editor">
+      <div class="group">
+        <div class="grouphead">Color</div>
+        <div class="field huerow">
+          <span>Rango de matiz — arrastra los dos puntos (el color se ve bajo cada punto)</span>
+          <canvas id="hueBar" width="600" height="46"></canvas>
+          <div class="huelabels">
+            <span id="lblA">punto blanco: <b id="vHueA">345°</b></span>
+            <span id="lblB"><span id="lblBtxt">punto oscuro: </span><b id="vHueB">25°</b></span>
+          </div>
+        </div>
+        <div class="field"><span>Saturación mínima <b class="val" id="vSatMin">200</b></span><input type="range" id="satMin" min="0" max="255" value="200" oninput="syncRange('satMin','satMax');renderPreview()"></div>
+        <div class="field"><span>Saturación máxima <b class="val" id="vSatMax">240</b></span><input type="range" id="satMax" min="0" max="255" value="240" oninput="syncRange('satMax','satMin');renderPreview()"></div>
+        <div class="field"><span>Brillo mínimo <b class="val" id="vValMin">150</b></span><input type="range" id="valMin" min="10" max="255" value="150" oninput="syncRange('valMin','valMax');renderPreview()"></div>
+        <div class="field"><span>Brillo máximo <b class="val" id="vValMax">210</b></span><input type="range" id="valMax" min="10" max="255" value="210" oninput="syncRange('valMax','valMin');renderPreview()"></div>
+      </div>
+      <div class="group">
+        <div class="grouphead">Movimiento</div>
+        <div class="motionrow">
+          <div class="stepper">
+            <span class="steplabel">Velocidad <small style="opacity:.6">(0 = estática)</small></span>
+            <button type="button" onclick="stepVal('speed',-0.1)" aria-label="menos velocidad">−</button>
+            <input type="number" id="speed" min="0" max="5" step="0.1" value="1" oninput="renderPreview()">
+            <button type="button" onclick="stepVal('speed',0.1)" aria-label="más velocidad">+</button>
+          </div>
+          <div class="stepper">
+            <span class="steplabel">Escala del patrón</span>
+            <button type="button" onclick="stepVal('scale',-0.5)" aria-label="menos escala">−</button>
+            <input type="number" id="scale" min="0.5" max="10" step="0.5" value="3" oninput="renderPreview()">
+            <button type="button" onclick="stepVal('scale',0.5)" aria-label="más escala">+</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="previews">
+      <div class="pv"><canvas id="pvGlow"></canvas><div class="pvlabel">Cómo se vería el cuarto</div></div>
+      <div class="pv"><canvas id="pvHsv"></canvas><div class="pvlabel">Región en el cilindro HSV</div></div>
+    </div>
+    <div class="row">
+      <button class="btn-ghost" onclick="closeOv('ovEditor')">Cancelar</button>
+      <button class="btn-save" onclick="saveScene()">Guardar escena</button>
+    </div>
+    <p class="hint">Los dos colores definen el rango de matiz (hueMin–hueMax) que el firmware recibe por <b>load_scene</b>. La miniatura se genera desde esos parámetros — no se sube ninguna imagen.</p>
+  </div>
+</div>
+
+<!-- Modal: detalle / aplicar escena -->
+<div class="overlay" id="ovDetail">
+  <div class="modal">
+    <h3 id="detailName"></h3>
+    <div class="previews">
+      <div class="pv"><canvas id="dtGlow"></canvas><div class="pvlabel">Cuarto</div></div>
+      <div class="pv"><canvas id="dtHsv"></canvas><div class="pvlabel">Cilindro HSV</div></div>
+    </div>
+    <pre class="json" id="detailJson"></pre>
+    <div class="row">
+      <button class="btn-ghost" onclick="closeOv('ovDetail')">Cerrar</button>
+      <button class="btn-ghost" style="color:var(--accent)" onclick="editarDesdeDetalle()">Editar</button>
+      <button class="btn-save" onclick="aplicar()">Aplicar escena</button>
+    </div>
+    <p class="hint">"Aplicar" enviaría este JSON por WebSocket al hub (puerto 8765, protocolo que ya entiende el firmware de <b>luces_estaticas_kor</b>).</p>
+  </div>
+</div>
+
+<script>
+/* ================= Estado (persistente en localStorage) ================= */
+const LS = 'korlab_lights_v1';
+let usuarios = ['Usuario 1','Usuario 2'];
+let escenas = [];
+let modo = 'glow';
+let editando = null; // escena abierta en detalle
+
+function seed(){
+  return [
+    {nombre:'Box — Clase fuerte', usuario:'Usuario 1',
+     params:{hueMin:345,hueMax:25,satMin:200,satMax:255,valMin:120,valMax:255,scale:3,speed:1.5}},
+    {nombre:'Stretch — Calma', usuario:'Usuario 1',
+     params:{hueMin:200,hueMax:260,satMin:120,satMax:220,valMin:60,valMax:160,scale:5,speed:0.4}},
+    {nombre:'Baile — Fiesta', usuario:'Usuario 2',
+     params:{hueMin:280,hueMax:340,satMin:230,satMax:255,valMin:150,valMax:255,scale:2,speed:3}},
+  ];
+}
+function load(){
+  try{
+    const d = JSON.parse(localStorage.getItem(LS));
+    if(d && Array.isArray(d.escenas)){ usuarios=d.usuarios||usuarios; escenas=d.escenas; return; }
+  }catch(e){}
+  escenas = seed();
+}
+function save(){ localStorage.setItem(LS, JSON.stringify({usuarios, escenas})); }
+
+/* ============ Conversión de color ============ */
+function hueDeHex(hex){ // devuelve hue 0..360 (ignora saturación del picker)
+  const r=parseInt(hex.slice(1,3),16)/255, g=parseInt(hex.slice(3,5),16)/255, b=parseInt(hex.slice(5,7),16)/255;
+  const mx=Math.max(r,g,b), mn=Math.min(r,g,b), d=mx-mn;
+  if(d===0) return 0;
+  let h;
+  if(mx===r) h=((g-b)/d)%6; else if(mx===g) h=(b-r)/d+2; else h=(r-g)/d+4;
+  return ((h*60)+360)%360;
+}
+function hsvToRgb(h,s,v){ // h 0..360, s/v 0..1 -> [r,g,b] 0..255
+  const c=v*s, x=c*(1-Math.abs(((h/60)%2)-1)), m=v-c;
+  let r,g,b;
+  if(h<60){r=c;g=x;b=0}else if(h<120){r=x;g=c;b=0}else if(h<180){r=0;g=c;b=x}
+  else if(h<240){r=0;g=x;b=c}else if(h<300){r=x;g=0;b=c}else{r=c;g=0;b=x}
+  return [Math.round((r+m)*255),Math.round((g+m)*255),Math.round((b+m)*255)];
+}
+function enRango(h,min,max){ // rango con wrap-around (ej. 345..25 cruza el 0)
+  return min<=max ? (h>=min && h<=max) : (h>=min || h<=max);
+}
+
+/* ============ Colores representativos de una escena (para el glow) ============ */
+function coloresDeEscena(p, n=5){
+  const total = (p.hueMin<=p.hueMax) ? (p.hueMax-p.hueMin) : (360-p.hueMin+p.hueMax);
+  const out=[];
+  for(let i=0;i<n;i++){
+    const h=(((p.hueMin + total*i/(n-1))%360)+360)%360;
+    const s=(p.satMin+p.satMax)/2/255, v=(p.valMin+p.valMax)/2/255;
+    out.push(hsvToRgb(h,s,v));
+  }
+  return out;
+}
+function rgbCss(c,a=1){return `rgba(${c[0]},${c[1]},${c[2]},${a})`}
+
+/* ============ Miniatura 1: glow (cómo se vería el cuarto) ============ */
+function pintarGlow(canvas, colores){
+  const w=canvas.width=320, h=canvas.height=240;
+  const ctx=canvas.getContext('2d');
+  ctx.fillStyle='#0a0b0e'; ctx.fillRect(0,0,w,h);
+  const pos=[[0.28,0.34],[0.72,0.30],[0.5,0.76],[0.86,0.70],[0.14,0.72]];
+  colores.slice(0,5).forEach((c,i)=>{
+    const [px,py]=pos[i], r=115;
+    const g=ctx.createRadialGradient(w*px,h*py,8,w*px,h*py,r);
+    g.addColorStop(0,rgbCss(c,.9)); g.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=g; ctx.beginPath(); ctx.arc(w*px,h*py,r,0,7); ctx.fill();
+  });
+  const sombra=ctx.createRadialGradient(w/2,h/2,h*.2,w/2,h/2,h*.92);
+  sombra.addColorStop(0,'rgba(0,0,0,0)'); sombra.addColorStop(1,'rgba(0,0,0,.55)');
+  ctx.fillStyle=sombra; ctx.fillRect(0,0,w,h);
+}
+
+/* ============ Miniatura 2: cilindro HSV con la región de la escena resaltada ============
+   La respuesta a "¿cómo genero esto?": canvas 2D píxel a píxel desde los
+   parámetros de la escena. Sin Three.js, sin imágenes, determinístico.      */
+function pintarCilindro(canvas, p){
+  const w=canvas.width=320, h=canvas.height=240;
+  const ctx=canvas.getContext('2d');
+  ctx.fillStyle='#101319'; ctx.fillRect(0,0,w,h);
+
+  // --- Cara superior: disco Hue (ángulo) × Saturación (radio), oscurecido por valMax ---
+  const cx=160, cy=78, RX=88, RY=40;
+  const img=ctx.createImageData(w,h), d=img.data;
+  const brillo = p.valMax/255; // el disco entero baja con el brillo máximo de la escena
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+    if(y<cy-RY||y>cy+RY) continue;
+    const dx=(x-cx)/RX, dy=(y-cy)/RY, r=Math.hypot(dx,dy);
+    if(r>1) continue;
+    const hue=((Math.atan2(dy,dx)*180/Math.PI)+360)%360;
+    const rs=r*255;
+    const ok = enRango(hue,p.hueMin,p.hueMax) && rs>=p.satMin && rs<=p.satMax;
+    const [rr,gg,bb]=hsvToRgb(hue, r, 1);
+    const f = (ok?1:0.22) * (0.25 + 0.75*brillo), i=(y*w+x)*4;
+    d[i]=rr*f; d[i+1]=gg*f; d[i+2]=bb*f; d[i+3]=255;
+  }
+  ctx.putImageData(img,0,0);
+
+  // --- Costado del cilindro: Hue (X) × Value (Y) — banda iluminada = rango valMin..valMax ---
+  const sx0=cx-RX, sw=RX*2, sy0=cy+RY+18, sh=76;
+  for(let y=sy0;y<sy0+sh;y++)for(let x=sx0;x<sx0+sw;x++){
+    const hue=(((x-sx0)/sw)*360+180)%360; // alineado con el frente del disco
+    const v=(1-(y-sy0)/sh)*255;           // brillo en 0..255
+    const ok = enRango(hue,p.hueMin,p.hueMax) && v>=p.valMin && v<=p.valMax;
+    const [rr,gg,bb]=hsvToRgb(hue,1,v/255);
+    ctx.fillStyle= ok?`rgb(${rr},${gg},${bb})`:`rgb(${rr*.22|0},${gg*.22|0},${bb*.22|0})`;
+    ctx.fillRect(x,y,1,1);
+  }
+  ctx.fillStyle='rgba(0,0,0,.25)'; ctx.fillRect(sx0,sy0,sw,sh);
+
+  // --- Etiquetas de ejes (como en el boceto) ---
+  ctx.fillStyle='#8b95a8'; ctx.font='10px -apple-system,sans-serif';
+  ctx.fillText('Value ↑', sx0+sw+6, sy0+sh/2);
+  ctx.fillText('Hue ↷', cx-16, cy-RY-8);
+  ctx.fillText('Saturation →', sx0, cy+RY+10);
+}
+
+/* ============ Render de tarjetas ============ */
+function renderEscenas(){
+  const grid=document.getElementById('grid');
+  const usuario=usuarioActual();
+  const visibles=escenas.filter(e=>e.usuario===usuario);
+  grid.innerHTML='';
+  if(!visibles.length){
+    grid.innerHTML=`<div class="empty">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--border)"
+        stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.7.6 1 1.4 1 2.5h6c0-1.1.3-1.9 1-2.5A6 6 0 0 0 12 3z"/>
+      </svg>
+      <span>Sin escenas para este usuario</span>
+    </div>`;
+    return;
+  }
+  visibles.forEach(e=>{
+    const card=document.createElement('div'); card.className='card';
+    const cv=document.createElement('canvas');
+    const nm=document.createElement('div'); nm.className='name'; nm.textContent=e.nombre;
+    const mt=document.createElement('div'); mt.className='meta'; mt.textContent=e.usuario;
+    const ap=document.createElement('button'); ap.className='applyBtn'; ap.textContent='▶ Aplicar';
+    ap.onclick=(ev)=>{ev.stopPropagation(); abrirDetalle(e);};
+    card.append(cv,nm,mt,ap);
+    card.onclick=()=>abrirDetalle(e);
+    grid.append(card);
+    if(modo==='glow') pintarGlow(cv,coloresDeEscena(e.params));
+    else pintarCilindro(cv,e.params);
+  });
+}
+function setMode(m){
+  modo=m;
+  document.getElementById('modeGlow').classList.toggle('active',m==='glow');
+  document.getElementById('modeHsv').classList.toggle('active',m==='hsv');
+  renderEscenas();
+}
+
+/* ============ Header + chip de usuario (Propuesta 4) ============ */
+let hubEstado = false; // variable lista para integrar con el WS real
+function setHubEstado(on){
+  hubEstado = on;
+  document.getElementById('hubIndicador').classList.toggle('on', on);
+  document.getElementById('hubTxt').textContent = on ? 'Hub conectado' : 'Sin hub';
+}
+function inicialInicial(u){ return (u||'?').trim().charAt(0).toUpperCase(); }
+function renderUserChip(){
+  const u = usuarioActual();
+  document.getElementById('userChipAvatar').textContent = inicialInicial(u);
+  document.getElementById('userChipNombre').textContent = u;
+}
+function renderUserPop(){
+  const pop = document.getElementById('userPop'); pop.innerHTML='';
+  const actual = usuarioActual();
+  usuarios.forEach(u=>{
+    const it=document.createElement('div'); it.className='userpop-item'+(u===actual?' active':'');
+    const av=document.createElement('span'); av.className='miniavatar'; av.textContent=inicialInicial(u);
+    const tx=document.createElement('span'); tx.textContent=u;
+    it.append(av,tx);
+    it.onclick=()=>{ document.getElementById('userSelect').value = u; syncUserChip(); cerrarUserPop(); renderEscenas(); };
+    pop.append(it);
+  });
+  const nw=document.createElement('button'); nw.className='userpop-new'; nw.textContent='＋ Nuevo usuario…';
+  nw.onclick=()=>{ cerrarUserPop(); openNewUser(); };
+  pop.append(nw);
+}
+function toggleUserPop(ev){ ev.stopPropagation(); const pop=document.getElementById('userPop');
+  if(pop.classList.contains('open')) cerrarUserPop(); else { renderUserPop(); pop.classList.add('open');
+    document.getElementById('userChip').classList.add('open'); } }
+function cerrarUserPop(){ document.getElementById('userPop').classList.remove('open');
+  document.getElementById('userChip').classList.remove('open'); }
+document.addEventListener('click', e=>{ if(!e.target.closest('.userbar')) cerrarUserPop(); });
+
+/* ============ Usuarios ============ */
+function usuarioActual(){return document.getElementById('userSelect').value}
+function renderUsuarios(){
+  const sel=document.getElementById('userSelect'); sel.innerHTML='';
+  usuarios.forEach(u=>{const o=document.createElement('option');o.textContent=u;sel.append(o)});
+  const nw=document.createElement('option'); nw.value='__new__'; nw.textContent='＋ Nuevo usuario…'; sel.append(nw);
+}
+function openNewUser(){
+  document.getElementById('userSelect').value=usuarios[0];
+  document.getElementById('ovUser').classList.add('open');
+  document.getElementById('newUserName').focus();
+}
+function addUser(){
+  const n=document.getElementById('newUserName').value.trim();
+  if(!n){document.getElementById('newUserName').placeholder='⚠ Escribe un nombre';return}
+  usuarios.push(n); renderUsuarios();
+  document.getElementById('userSelect').value=n;
+  closeOv('ovUser'); save(); syncUserChip(); renderEscenas();
+}
+function syncUserChip(){ renderUserChip(); }
+
+/* ============ Barra de matiz arrastrable ============ */
+let hueA = 345, hueB = 25;   // orden elegido por el usuario (puede cruzar el 0)
+let dragPunto = null;        // 'A' | 'B' | null
+
+function pintarHueBar(){
+  const cv = document.getElementById('hueBar');
+  const ctx = cv.getContext('2d');
+  const w = cv.width, h = cv.height;
+  for(let x=0; x<w; x++){
+    const [r,g,b] = hsvToRgb((x/w)*360, 1, 1);
+    ctx.fillStyle = `rgb(${r},${g},${b})`;
+    ctx.fillRect(x,0,1,h);
+  }
+  // puntos arrastrables: centro = color de ese matiz; A con anillo blanco, B con anillo oscuro
+  [[hueA,'#fff'],[hueB,'#0d0f14']].forEach(([hue,ring])=>{
+    const x = (hue/360)*w;
+    ctx.beginPath(); ctx.arc(x, h/2, 13, 0, 7);
+    ctx.fillStyle = `rgb(${hsvToRgb(hue,1,1).join(',')})`; ctx.fill();
+    ctx.lineWidth = 3; ctx.strokeStyle = ring; ctx.stroke();
+  });
+  const wrap = hueA>hueB ? ' (cruza 0°)' : '';
+  document.getElementById('vHueA').textContent = Math.round(hueA)+'°';
+  document.getElementById('vHueB').textContent = Math.round(hueB)+'°'+wrap;
+  // etiqueta fija: sin mostrar orden falso cuando cruzan el 0
+  document.getElementById('lblBtxt').textContent = hueA>hueB ? 'final: ' : 'punto oscuro: ';
+}
+function hueDeEvento(ev){
+  const cv = document.getElementById('hueBar');
+  const rect = cv.getBoundingClientRect();
+  const x = (ev.touches ? ev.touches[0].clientX : ev.clientX) - rect.left;
+  return (((x/rect.width)*360 % 360) + 360) % 360;
+}
+function iniciarArrastre(ev){
+  ev.preventDefault();
+  const h = hueDeEvento(ev);
+  // el punto activo es el más cercano al toque
+  const dA = Math.min(Math.abs(h-hueA), 360-Math.abs(h-hueA));
+  const dB = Math.min(Math.abs(h-hueB), 360-Math.abs(h-hueB));
+  dragPunto = dA <= dB ? 'A' : 'B';
+  moverArrastre(ev);
+}
+function moverArrastre(ev){
+  if(!dragPunto) return;
+  ev.preventDefault();
+  const h = hueDeEvento(ev);
+  if(dragPunto==='A') hueA = h; else hueB = h;
+  pintarHueBar(); renderPreview();
+}
+function terminarArrastre(){ dragPunto = null; }
+function conectarHueBar(){
+  const cv = document.getElementById('hueBar');
+  cv.addEventListener('mousedown', iniciarArrastre);
+  cv.addEventListener('mousemove', moverArrastre);
+  document.addEventListener('mouseup', terminarArrastre);
+  cv.addEventListener('touchstart', iniciarArrastre, {passive:false});
+  cv.addEventListener('touchmove', moverArrastre, {passive:false});
+  document.addEventListener('touchend', terminarArrastre);
+}
+
+/* ============ Pares min/max que no se cruzan ============ */
+/* se mueve `propioId`; si cruza al otro, el que se mueve queda pegado al otro */
+function syncRange(propioId, otroId){
+  const propio = document.getElementById(propioId), otro = document.getElementById(otroId);
+  const esMin = propioId.toLowerCase().includes('min');
+  const cruzo = esMin ? +propio.value > +otro.value : +propio.value < +otro.value;
+  if(cruzo) propio.value = otro.value;
+}
+function stepVal(id,delta){ // stepper −/+ de Movimiento, respeta min/max del input
+  const el=document.getElementById(id);
+  const min=+el.min, max=+el.max;
+  el.value = Math.min(max, Math.max(min, Math.round((+el.value+delta)*10)/10));
+  renderPreview();
+}
+
+/* ============ Editor de escena ============ */
+let escenaEditando = null; // si no es null, el editor modifica esa escena en vez de crear una
+
+function cargarEscenaEnEditor(e){ // precarga params de una escena existente en el formulario
+  const p = e.params;
+  hueA = p.hueMin; hueB = p.hueMax;
+  document.getElementById('satMin').value = p.satMin;
+  document.getElementById('satMax').value = p.satMax;
+  document.getElementById('valMin').value = p.valMin;
+  document.getElementById('valMax').value = p.valMax;
+  document.getElementById('speed').value = p.speed;
+  document.getElementById('scale').value = p.scale;
+}
+function paramsDeFormulario(){
+  return {
+    // se respeta el orden elegido: un rango 345→25 (cruza el 0) es válido
+    hueMin:hueA|0, hueMax:hueB|0,
+    satMin:+document.getElementById('satMin').value, satMax:+document.getElementById('satMax').value,
+    valMin:+document.getElementById('valMin').value, valMax:+document.getElementById('valMax').value,
+    scale:+document.getElementById('scale').value||3,
+    speed:+document.getElementById('speed').value||0,
+  };
+}
+function renderPreview(){
+  const p=paramsDeFormulario();
+  document.getElementById('vSatMin').textContent=p.satMin;
+  document.getElementById('vSatMax').textContent=p.satMax;
+  document.getElementById('vValMin').textContent=p.valMin;
+  document.getElementById('vValMax').textContent=p.valMax;
+  pintarGlow(document.getElementById('pvGlow'),coloresDeEscena(p));
+  pintarCilindro(document.getElementById('pvHsv'),p);
+  actualizarPistas();
+}
+function actualizarPistas(){ // la pista del slider muestra lo que controla (Propuesta 5)
+  const hue = hueA<=hueB ? (hueA+hueB)/2 : (((hueA+((360-hueA+hueB)/2))%360+360)%360);
+  const vivo = `hsl(${hue},100%,55%)`;
+  ['satMin','satMax'].forEach(id=>{
+    document.getElementById(id).style.background =
+      `linear-gradient(90deg,#3a4152, ${vivo})`;
+  });
+  ['valMin','valMax'].forEach(id=>{
+    document.getElementById(id).style.background =
+      'linear-gradient(90deg,#000,#fff)';
+  });
+}
+function openEditor(){ // crea escena nueva (resetea el formulario)
+  escenaEditando = null;
+  document.getElementById('editorTitulo').textContent='Módulo de luces — nueva escena';
+  document.getElementById('sceneName').value='';
+  document.getElementById('satMin').value=200;
+  document.getElementById('satMax').value=240;
+  document.getElementById('valMin').value=150;
+  document.getElementById('valMax').value=210;
+  document.getElementById('speed').value=1;
+  document.getElementById('scale').value=3;
+  hueA=345; hueB=25;
+  pintarHueBar(); conectarHueBar(); renderPreview(); actualizarPistas();
+  document.getElementById('ovEditor').classList.add('open');
+}
+function editarDesdeDetalle(){ // precarga la escena abierta en el detalle
+  if(!editando) return;
+  escenaEditando = editando;
+  closeOv('ovDetail');
+  cargarEscenaEnEditor(editando);
+  document.getElementById('editorTitulo').textContent='Editar escena';
+  document.getElementById('sceneName').value = editando.nombre;
+  pintarHueBar(); conectarHueBar(); renderPreview(); actualizarPistas();
+  document.getElementById('ovEditor').classList.add('open');
+}
+function saveScene(){
+  const n=document.getElementById('sceneName').value.trim();
+  if(!n){document.getElementById('sceneName').placeholder='⚠ Escribe un nombre';return}
+  if(escenaEditando){
+    escenaEditando.nombre = n;
+    escenaEditando.params = paramsDeFormulario();
+    save(); closeOv('ovEditor'); renderEscenas(); toast('Escena actualizada');
+  }else{
+    escenas.unshift({nombre:n,usuario:usuarioActual(),params:paramsDeFormulario()});
+    save(); closeOv('ovEditor'); renderEscenas(); toast('Escena guardada');
+  }
+}
+
+/* ============ Toast + spinner en Aplicar (Propuesta 6) ============ */
+let toastTimer=null;
+function toast(msg){
+  const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'),2500);
+}
+function aplicar(){
+  const btn=document.querySelector('#ovDetail .btn-save');
+  const original=btn.textContent;
+  btn.classList.add('cargando');
+  btn.innerHTML='<span class="spinner"></span>Aplicando…';
+  setTimeout(()=>{
+    btn.classList.remove('cargando');
+    btn.textContent=original;
+    alert('Se enviaría por WS al hub del gimnasio:8765 → '+editando.nombre+
+      '\n(integración real pendiente de conectar con el backend)');
+  },600);
+}
+
+/* ============ Detalle / aplicar ============ */
+function abrirDetalle(e){
+  editando=e;
+  document.getElementById('detailName').textContent=e.nombre;
+  pintarGlow(document.getElementById('dtGlow'),coloresDeEscena(e.params));
+  pintarCilindro(document.getElementById('dtHsv'),e.params);
+  document.getElementById('detailJson').textContent=
+    JSON.stringify({type:'load_scene',scene:e.params},null,2);
+  document.getElementById('ovDetail').classList.add('open');
+}
+
+function closeOv(id){document.getElementById(id).classList.remove('open')}
+
+/* ============ Init ============ */
+load(); renderUsuarios(); renderUserChip(); renderEscenas();
+</script>
+</body>
+</html>
