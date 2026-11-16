@@ -7,6 +7,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 <style>
   :root{
     --bg:#07080c;             /* más profundo */
@@ -182,8 +184,12 @@
 
   .previews{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:8px}
   .previews .pv{background:#0a0b0e; border:1px solid var(--border); border-radius:12px; overflow:hidden;
-    box-shadow:var(--shadow)}
+    box-shadow:var(--shadow); position:relative}
   .previews canvas{width:100%; height:130px; display:block}
+  .previews .pv canvas.tres{height:130px; display:block}
+  .pv3d-badge{position:absolute; top:6px; right:8px; font-size:10px; font-weight:600; color:var(--accent);
+    background:rgba(0,0,0,.45); border:1px solid var(--border); border-radius:999px; padding:2px 8px;
+    z-index:5; backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px)}
   .pvlabel{font-size:12px; color:var(--muted); text-align:center; padding:6px}
 
   pre.json{background:#0a0b0e; border:1px solid var(--line); border-radius:10px; padding:12px;
@@ -276,7 +282,7 @@
     </div>
     <div class="previews">
       <div class="pv"><canvas id="pvGlow"></canvas><div class="pvlabel">Cómo se vería el cuarto</div></div>
-      <div class="pv"><canvas id="pvHsv"></canvas><div class="pvlabel">Región en el cilindro HSV</div></div>
+      <div class="pv" id="pvHsvBox"><canvas id="pvHsv"></canvas><span class="pv3d-badge" id="pvHsvBadge" style="display:none">3D</span><div class="pvlabel">Región en el cilindro HSV</div></div>
     </div>
     <div class="row">
       <button class="btn-ghost" onclick="closeOv('ovEditor')">Cancelar</button>
@@ -292,7 +298,7 @@
     <h3 id="detailName"></h3>
     <div class="previews">
       <div class="pv"><canvas id="dtGlow"></canvas><div class="pvlabel">Cuarto</div></div>
-      <div class="pv"><canvas id="dtHsv"></canvas><div class="pvlabel">Cilindro HSV</div></div>
+      <div class="pv" id="dtHsvBox"><canvas id="dtHsv"></canvas><span class="pv3d-badge" id="dtHsvBadge" style="display:none">3D</span><div class="pvlabel">Cilindro HSV</div></div>
     </div>
     <pre class="json" id="detailJson"></pre>
     <div class="row">
@@ -425,6 +431,160 @@ function pintarCilindro(canvas, p){
   ctx.fillText('Saturation →', sx0, cy+RY+10);
 }
 
+/* ============ Cilindro HSV 3D real (Three.js, interactivo) ============ */
+const HSV3D = {listo: false, escenas: new Map()}; // `listo` se resuelve al primer intento (los <script src> cargan después de este bloque en file://)
+
+function rangoArco(p, pasos=64){ // muestras de matiz del rango (respeta wrap 0°)
+  const total = (p.hueMin<=p.hueMax) ? (p.hueMax-p.hueMin) : (360-p.hueMin+p.hueMax);
+  const out=[];
+  for(let i=0;i<pasos;i++){
+    out.push(((p.hueMin + total*i/(pasos-1))%360+360)%360);
+  }
+  return out;
+}
+
+function crearCilindro3D(canvas, altoPx=150){ // devuelve {scene,camera,renderer,group}
+  const w = canvas.parentElement.clientWidth || 240;
+  const renderer = new THREE.WebGLRenderer({canvas, antialias:true, alpha:true});
+  renderer.setSize(w, altoPx, false);
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(38, w/altoPx, 0.1, 100);
+  camera.position.set(2.6, 2.0, 3.4);
+  camera.lookAt(0, 0.35, 0);
+  const controls = new THREE.OrbitControls(camera, canvas);
+  controls.enableDamping = true; controls.dampingFactor = 0.08;
+  controls.target.set(0, 0.35, 0);
+  controls.minDistance = 1.6; controls.maxDistance = 8;
+  controls.enablePan = false;
+  // interacción solo sobre este canvas: no bloquear el scroll de la página
+  canvas.style.touchAction = 'none';
+  return {scene, camera, renderer, controls};
+}
+
+function construirCilindro(scene, res=48){ // geometría una vez, luego solo colores
+  const grupo = new THREE.Group();
+  // disco superior: hue (ángulo) × sat (radio) con anillos
+  const disco = new THREE.Group();
+  const ANILLOS = 10;
+  for(let a=0; a<ANILLOS; a++){
+    const r0 = a/ANILLOS, r1 = (a+1)/ANILLOS;
+    const geo = new THREE.RingGeometry(r0, r1, res, 1);
+    const cols = [];
+    const posAtrib = geo.attributes.position;
+    for(let i=0;i<posAtrib.count;i++){
+      const x=posAtrib.getX(i), y=posAtrib.getY(i);
+      const r=Math.hypot(x,y), hue=((Math.atan2(y,x)*180/Math.PI)+360)%360;
+      const c=hsvToRgb(hue, r, 1);
+      cols.push(c[0]/255, c[1]/255, c[2]/255);
+    }
+    geo.setAttribute('color', new THREE.Float32BufferAttribute(cols,3));
+    const m = new THREE.MeshBasicMaterial({vertexColors:true, side:THREE.DoubleSide, transparent:true, opacity:0.95});
+    disco.add(new THREE.Mesh(geo,m));
+  }
+  disco.rotation.x = -Math.PI/2;
+  disco.position.y = 0.7;
+  grupo.add(disco);
+  grupo.userData.anillos = disco.children.slice(); // los 10 meshes de anillo
+  // pared lateral: hue (ángulo) × value (altura)
+  const geoLat = new THREE.CylinderGeometry(1,1,0.7,res,1,true);
+  const colsLat = [];
+  const posLat = geoLat.attributes.position;
+  for(let i=0;i<posLat.count;i++){
+    const x=posLat.getX(i), z=posLat.getZ(i), y=posLat.getY(i);
+    const hue=((Math.atan2(x,z)*180/Math.PI)+180)%360;
+    const v=(y+0.35)/0.7;
+    const c=hsvToRgb(hue,1,v);
+    colsLat.push(c[0]/255,c[1]/255,c[2]/255);
+  }
+  geoLat.setAttribute('color', new THREE.Float32BufferAttribute(colsLat,3));
+  const lat = new THREE.Mesh(geoLat, new THREE.MeshBasicMaterial({vertexColors:true, side:THREE.DoubleSide, transparent:true, opacity:0.95}));
+  lat.position.y = 0.35;
+  grupo.add(lat);
+  grupo.userData.pared = lat; // referencia estable
+  scene.add(grupo);
+  return grupo;
+}
+
+function mostrarCilindro3D(canvas, p){
+  // destilar 2D→3D: si WebGL/Three no está, dejar el 2D intacto
+  if(!HSV3D.listo){
+    if(typeof THREE === 'undefined' || !THREE.OrbitControls) return false;
+    HSV3D.listo = true; // primera vez que THREE está presente
+  }
+  let est = HSV3D.escenas.get(canvas);
+  if(!est){
+    try{
+      const core = crearCilindro3D(canvas, 150);
+      core.grupo = construirCilindro(core.scene);
+      est = core;
+      HSV3D.escenas.set(canvas, est);
+      // animar solo mientras el canvas es visible en pantalla
+      est.loop = null;
+      est.animar = ()=>{
+        est.loop = requestAnimationFrame(est.animar);
+        est.controls.update();
+        est.renderer.render(est.scene, est.camera);
+      };
+      est.detener = ()=>{ if(est.loop) cancelAnimationFrame(est.loop); est.loop=null; };
+      new IntersectionObserver(entries=>{
+        entries.forEach(en=> en.isIntersecting ? est.animar() : est.detener());
+      },{threshold:0.01}).observe(canvas);
+    }catch(e){ HSV3D.listo=false; return false; }
+  }
+  // actualizar resaltado de la escena p
+  const g = est.grupo;
+  g.userData.rango = p;
+  const arco = rangoArco(p);
+  const centroSat = (p.satMin+p.satMax)/2/255;
+  const centroVal = (p.valMin+p.valMax)/2/255;
+  // 1) disco: atenuar anillos fuera del rango de matiz
+  g.userData.anillos.forEach(mesh=>{
+    const cols = mesh.geometry.attributes.color;
+    const posAtrib = mesh.geometry.attributes.position;
+    for(let i=0;i<cols.count;i++){
+      const x=posAtrib.getX(i), y=posAtrib.getY(i);
+      const r=Math.hypot(x,y), hue=((Math.atan2(y,x)*180/Math.PI)+360)%360;
+      const rs=r*255;
+      const dentro = enRango(hue,p.hueMin,p.hueMax) && rs>=p.satMin && rs<=p.satMax;
+      const f = dentro?1.0:0.18;
+      // los colores base se recalculan desde la geometría (posición es estable)
+      const c=hsvToRgb(hue, r, 1);
+      cols.setXYZ(i, c[0]/255*f, c[1]/255*f, c[2]/255*f);
+    }
+    cols.needsUpdate = true;
+  });
+  // 2) pared: solo la banda valMin..valMax a plena luz, resto atenuado
+  const pared = g.userData.pared;
+  const colsLat = pared.geometry.attributes.color;
+  const posLat = pared.geometry.attributes.position;
+  for(let i=0;i<colsLat.count;i++){
+    const x=posLat.getX(i), z=posLat.getZ(i), y=posLat.getY(i);
+    const hue=((Math.atan2(x,z)*180/Math.PI)+180)%360;
+    const v=(y+0.35)/0.7;
+    const dentroH = enRango(hue,p.hueMin,p.hueMax);
+    const dentroV = (v*255)>=p.valMin && (v*255)<=p.valMax;
+    const f = dentroH&&dentroV ? 1.0 : 0.16;
+    const c=hsvToRgb(hue,1,v);
+    colsLat.setXYZ(i, c[0]/255*f, c[1]/255*f, c[2]/255*f);
+  }
+  colsLat.needsUpdate = true;
+  // 3) marcador del centro de la escena (wedge sólido)
+  if(g.userData.wedge){ g.remove(g.userData.wedge); g.userData.wedge=null; }
+  const mat = new THREE.MeshBasicMaterial({color: new THREE.Color(centroSat? hsvToRgb(arco[Math.floor(arco.length/2)],centroSat,centroVal).map(c=>c/255).join(',') : '#fff'), transparent:true, opacity:0.85, side:THREE.DoubleSide});
+  // wedge = sector circular en el disco a radio medio
+  const wed = new THREE.Shape();
+  const h0 = p.hueMin*Math.PI/180, h1 = ((p.hueMin<=p.hueMax)?p.hueMax:p.hueMax+360)*Math.PI/180;
+  wed.absarc(0,0,0.25, h0, h1, false);
+  wed.absarc(0,0,0.95, h1, h0, true);
+  const wedGeo = new THREE.ShapeGeometry(wed, 48);
+  const wedMesh = new THREE.Mesh(wedGeo, mat);
+  wedMesh.rotation.x = -Math.PI/2;
+  wedMesh.position.y = 0.705;
+  g.add(wedMesh); g.userData.wedge = wedMesh;
+  if(!est.loop) est.animar();
+  return true;
+}
+
 /* ============ Render de tarjetas ============ */
 function renderEscenas(){
   const grid=document.getElementById('grid');
@@ -452,7 +612,15 @@ function renderEscenas(){
     card.onclick=()=>abrirDetalle(e);
     grid.append(card);
     if(modo==='glow') pintarGlow(cv,coloresDeEscena(e.params));
-    else pintarCilindro(cv,e.params);
+    else{
+      // 3D directo: el canvas del HSV no debe recibir 2D antes, o WebGL no puede tomarlo
+      if(mostrarCilindro3D(cv,e.params)){
+        cv.classList.add('tres');
+        document.querySelectorAll('.pv3d-badge').forEach(b=>b.style.display='');
+      }else{
+        pintarCilindro(cv,e.params); // fallback 2D (sin WebGL o Three no cargó)
+      }
+    }
   });
 }
 function setMode(m){
@@ -624,7 +792,11 @@ function renderPreview(){
   document.getElementById('vValMin').textContent=p.valMin;
   document.getElementById('vValMax').textContent=p.valMax;
   pintarGlow(document.getElementById('pvGlow'),coloresDeEscena(p));
-  pintarCilindro(document.getElementById('pvHsv'),p);
+  // editor: 3D directo (el pvHsv del editor nunca recibe 2D si WebGL está)
+  const ok3d = mostrarCilindro3D(document.getElementById('pvHsv'),p);
+  if(!ok3d) pintarCilindro(document.getElementById('pvHsv'),p);
+  document.getElementById('pvHsv').classList.toggle('tres',ok3d);
+  document.getElementById('pvHsvBadge').style.display = ok3d?'':'none';
   actualizarPistas();
 }
 function actualizarPistas(){ // la pista del slider muestra lo que controla (Propuesta 5)
@@ -700,7 +872,10 @@ function abrirDetalle(e){
   editando=e;
   document.getElementById('detailName').textContent=e.nombre;
   pintarGlow(document.getElementById('dtGlow'),coloresDeEscena(e.params));
-  pintarCilindro(document.getElementById('dtHsv'),e.params);
+  const ok3dD = mostrarCilindro3D(document.getElementById('dtHsv'),e.params);
+  if(!ok3dD) pintarCilindro(document.getElementById('dtHsv'),e.params);
+  document.getElementById('dtHsv').classList.toggle('tres',ok3dD);
+  document.getElementById('dtHsvBadge').style.display = ok3dD?'':'none';
   document.getElementById('detailJson').textContent=
     JSON.stringify({type:'load_scene',scene:e.params},null,2);
   document.getElementById('ovDetail').classList.add('open');
