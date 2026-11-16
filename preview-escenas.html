@@ -570,10 +570,12 @@ function terminarArrastre(){ dragPunto = null; }
 function conectarHueBar(){
   const cv = document.getElementById('hueBar');
   cv.addEventListener('mousedown', iniciarArrastre);
-  cv.addEventListener('mousemove', moverArrastre);
+  // el seguimiento vive en document: si el cursor sale de la barra (rápido
+  // o verticalmente), el arrastre sigue hasta soltar el botón
+  document.addEventListener('mousemove', moverArrastre);
   document.addEventListener('mouseup', terminarArrastre);
   cv.addEventListener('touchstart', iniciarArrastre, {passive:false});
-  cv.addEventListener('touchmove', moverArrastre, {passive:false});
+  document.addEventListener('touchmove', moverArrastre, {passive:false});
   document.addEventListener('touchend', terminarArrastre);
 }
 
