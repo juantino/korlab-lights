@@ -300,7 +300,7 @@
       <button class="btn-ghost" style="color:var(--accent)" onclick="editarDesdeDetalle()">Editar</button>
       <button class="btn-save" onclick="aplicar()">Aplicar escena</button>
     </div>
-    <p class="hint">"Aplicar" enviaría este JSON por WebSocket al hub (puerto 8765, protocolo que ya entiende el firmware de <b>luces_estaticas_kor</b>).</p>
+    <p class="hint">"Aplicar" envía este JSON por WebSocket al hub (puerto 8765, protocolo que ya entiende el firmware de <b>luces_estaticas_kor</b>). Si el hub no está corriendo, la escena queda guardada y puedes reintentar después.</p>
   </div>
 </div>
 
@@ -463,12 +463,56 @@ function setMode(m){
 }
 
 /* ============ Header + chip de usuario (Propuesta 4) ============ */
-let hubEstado = false; // variable lista para integrar con el WS real
-function setHubEstado(on){
+/* ============ Conexión WebSocket con el hub (puerto 8765) ============ */
+const HUB_URL = 'ws://' + location.hostname + ':8765/';
+let wsHub = null;
+let hubEstado = false;
+let intentoReconexion = null;
+
+function setHubEstado(on, detalle){
   hubEstado = on;
   document.getElementById('hubIndicador').classList.toggle('on', on);
   document.getElementById('hubTxt').textContent = on ? 'Hub conectado' : 'Sin hub';
+  if(detalle) console.log('[hub]', detalle);
 }
+function hubConectar(){
+  try{
+    wsHub = new WebSocket(HUB_URL);
+  }catch(e){ setHubEstado(false,'no se pudo crear WS: '+e.message); return; }
+  wsHub.onopen = ()=>{ clearTimeout(intentoReconexion); setHubEstado(true, 'conectado a '+HUB_URL); hubHello(); };
+  wsHub.onclose = ()=>{
+    setHubEstado(false);
+    clearTimeout(intentoReconexion);
+    intentoReconexion = setTimeout(hubConectar, 3000); // reintento hasta que el hub esté
+  };
+  wsHub.onerror = ()=> setHubEstado(false);
+  wsHub.onmessage = (m)=>{
+    let d; try{ d=JSON.parse(m.data); }catch(e){ return; }
+    if(d.type==='welcome') hubLog('hub: '+JSON.stringify(d));
+    else if(d.type==='timer_mode') hubLog('ESP32: '+m.data);
+  };
+}
+function hubHello(){
+  const u = usuarioActual();
+  wsHub.send(JSON.stringify({type:'hello', role:'ui', user:u, page:'preview-escenas'}));
+}
+function hubLog(msg){ console.log('[hub]', msg); }
+function hubEnviar(obj, onOk, onErr){ // devuelve true si el envío salió
+  if(!(wsHub && wsHub.readyState===WebSocket.OPEN)){
+    if(onErr) onErr('Sin conexión con el hub. Levántalo con: python3 hub.py');
+    return false;
+  }
+  try{
+    wsHub.send(JSON.stringify(obj));
+    if(onOk) onOk();
+    return true;
+  }catch(e){
+    if(onErr) onErr('Fallo al enviar por WS: '+e.message);
+    return false;
+  }
+}
+hubConectar();
+
 function inicialInicial(u){ return (u||'?').trim().charAt(0).toUpperCase(); }
 function renderUserChip(){
   const u = usuarioActual();
@@ -684,16 +728,20 @@ function toast(msg){
   clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'),2500);
 }
 function aplicar(){
+  if(!editando) return;
   const btn=document.querySelector('#ovDetail .btn-save');
   const original=btn.textContent;
   btn.classList.add('cargando');
   btn.innerHTML='<span class="spinner"></span>Aplicando…';
+  const payload={type:'load_scene', user:usuarioActual(), scene:editando.params};
+  const detalle='JSON enviado por WS al hub (puerto 8765):\n'+JSON.stringify(payload,null,2);
   setTimeout(()=>{
     btn.classList.remove('cargando');
     btn.textContent=original;
-    alert('Se enviaría por WS al hub del gimnasio:8765 → '+editando.nombre+
-      '\n(integración real pendiente de conectar con el backend)');
-  },600);
+    hubEnviar(payload,
+      ()=>toast('Escena "'+editando.nombre+'" enviada al hub'),
+      (err)=>alert(err+'\n\nLa escena quedó guardada. '+detalle));
+  },400);
 }
 
 /* ============ Detalle / aplicar ============ */
